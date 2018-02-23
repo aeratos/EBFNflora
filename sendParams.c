@@ -5,16 +5,16 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define STR_LENGTH 32
+#define STR_LENGTH 16
 
 speed_t baud = B115200; /* baud rate */
 
-int main() {
+int main(){
 	char byte;
 	char s[STR_LENGTH];
 	
 	int fd = open("/dev/ttyACM0", O_RDWR);
-	if (fd < 0) {
+	if(fd < 0){
 		perror("error");
 		exit(-1);
 	}
@@ -33,23 +33,38 @@ int main() {
 
 	tcsetattr(fd, TCSANOW, &settings); /* apply the settings */
 	tcflush(fd, TCOFLUSH);
-	
-	RESTART: printf("Type a message: ");
-	fgets(s, STR_LENGTH, stdin);
-	if ((strlen(s) > 0) && (s[strlen(s) - 1] == '\n'))
-		s[strlen(s) - 1] = '\0';
-		
-	int i;
-	int l = strlen(s);
-	for (i=0; i<l; i++) {
-		if (write(fd, s+i, 1) < 1) {
-			perror("error");
-			exit(-1);
-		}
-	}
-	write(fd, "\0", 1);
 
-	goto RESTART;
+	printf("Waiting for messages...\n");
+
+	while(1){
+		/* Reading */
+		while(1){
+			ssize_t n = read(fd, &byte, 1);
+			if(n <= 0){
+				perror("error");
+				exit(-1);
+			}
+			printf("%c", byte);
+			if(byte == '\0' || byte == '\n' || byte == '\r')
+				break;
+		}
+	
+		/* Writing */
+		fgets(s, STR_LENGTH, stdin);
+		if((strlen(s) > 0) && (s[strlen(s) - 1] == '\n'))
+			s[strlen(s) - 1] = '\0';
+			
+		int i;
+		int l = strlen(s);
+		for (i=0; i<l; i++) {
+			if(write(fd, s+i, 1) < 1){
+				perror("error");
+				exit(-1);
+			}
+		}
+		write(fd, "\0", 1);
+	
+	}
 
 	return 0;
 }

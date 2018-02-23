@@ -33,8 +33,7 @@ OBJS=adc.o\
      pins.o\
      uart.o\
 
-BINS=command_test.elf\
-     eeprom_test.elf\
+BINS=eeprom_test.elf\
      initial_setup.elf\
      light_test.elf\
 

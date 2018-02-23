@@ -1,4 +1,5 @@
 #include "digio.h"
+#include "eepromParams.h"
 #include "lcd_lib.h"
 #include "uart.h"
 #include <avr/io.h>
@@ -15,7 +16,6 @@
 #define LCD 1
 
 #define BUFFER_SIZE 16
-char buffer[BUFFER_SIZE];
 
 struct UART* uart;
 
@@ -30,6 +30,26 @@ volatile int waitingForPlant = 1;
 
 char* selectOutput = "PC o LCD?";
 volatile int waitingForOutput = 1;
+
+void printString(char* s){
+	int l=strlen(s);
+	for(int i=0; i<l; ++i, ++s)
+		UART_putChar(uart, (uint8_t) *s);
+}
+
+void readString(char* dest, int size){ 
+	int i = 0;
+	while(1){
+		uint8_t c = UART_getChar(uart);
+		dest[i++] = c;
+		dest[i] = 0;
+		if(i == size-1){  // end of dest buffer
+			while(c != 0) c = UART_getChar(uart); // read all incoming chars without storing in dest buffer: they are lost
+			return;
+		}
+		else if(c=='\n' || c==0) return;
+	}
+}
 
 ISR(INT0_vect){ /* external interrupt service routine */
 	if(waitingForPlant && DigIO_getValue(buttonLeft) == HIGH){
@@ -78,6 +98,38 @@ int main(void){
 	while(waitingForOutput);
 	
 	LCDclr();
+	
+	if (type == PC) {
+		char rx_message[BUFFER_SIZE];
+		
+		printString("frequency?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_prescaler(rx_message);
+		
+		printString("min light?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_minLight(rx_message);
+		
+		printString("max light?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_maxLight(rx_message);
+		
+		printString("min temperature?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_minTemp(rx_message);
+		
+		printString("max temperature?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_maxTemp(rx_message);
+	
+		printString("max pollution?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_maxPoll(rx_message);
+	
+		printString("thermistor resistance?\n");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_r1(rx_message);
+	}
 	
 	while(1);
 }
