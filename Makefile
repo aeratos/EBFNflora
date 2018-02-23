@@ -1,6 +1,6 @@
 PREFIX=.
 CC=avr-gcc
-CC_OPTS=-Wall --std=gnu99 -DF_CPU=16000000UL  -O3 -funsigned-char -funsigned-bitfields  -fshort-enums -Wall -Wstrict-prototypes -mmcu=atmega328 -I$(PREFIX)/include
+CC_OPTS=-Wall --std=gnu99 -DF_CPU=16000000UL  -O3 -funsigned-char -funsigned-bitfields  -fshort-enums -Wall -Wstrict-prototypes -mmcu=atmega328 -Wl,-u,vfprintf -lprintf_flt -lm -I$(PREFIX)/include
 
 AVRDUDE=avrdude
 
@@ -13,15 +13,26 @@ AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
 AVRDUDE_FLAGS += $(AVRDUDE_ERASE_COUNTER)
 AVRDUDE_FLAGS += -V -F -C /etc/avrdude.conf
 
-HEADERS=lcd_lib.h\
-		uart.h\
+HEADERS=adc.h\
+	delay.h\
+	digio.h\
+	eeprom.h\
+	lcd_lib.h\
+	pins.h\
+	uart.h\
 
 INCLUDES=$(addprefix $(PREFIX)/include/, $(HEADERS))
 
-OBJS=lcd_lib.o\
+OBJS=adc.o\
+     delay.o\
+     digio.o\
+     eeprom.o\
+     lcd_lib.o\
+     pins.o\
      uart.o\
 
 BINS=command_test.elf\
+     initial_setup.elf\
 
 .phony:	clean all
 
