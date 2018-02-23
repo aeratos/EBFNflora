@@ -17,6 +17,7 @@ HEADERS=adc.h\
 	delay.h\
 	digio.h\
 	eeprom.h\
+	eepromParams.h\
 	lcd_lib.h\
 	pins.h\
 	uart.h\
@@ -27,12 +28,15 @@ OBJS=adc.o\
      delay.o\
      digio.o\
      eeprom.o\
+     eepromParams.o\
      lcd_lib.o\
      pins.o\
      uart.o\
 
 BINS=command_test.elf\
+     eeprom_test.elf\
      initial_setup.elf\
+     light_test.elf\
 
 .phony:	clean all
 
