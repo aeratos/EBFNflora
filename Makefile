@@ -39,6 +39,7 @@ BINS=eeprom_test.elf\
      thermistor.elf\
      pollution.elf\
      printOut.elf\
+     main.elf\
 
 .phony:	clean all
 
