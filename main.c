@@ -13,8 +13,6 @@
 #define HIGH 1
 #define LOW 0
 
-#define MAGRA 0
-#define GRASSA 1
 #define PC 0
 #define LCD 1
 
@@ -30,7 +28,6 @@ int temp_pin = 0;
 int poll_pin = 3;
 int light_pin = 5;
 
-volatile int type;
 volatile int output;
 
 uint8_t prescaler;
@@ -44,10 +41,7 @@ float C1;
 float C2;
 float C3;
 
-char* selectPlant = "Magra o grassa?";
-volatile int waitingForPlant = 1;
-
-char* selectOutput = "PC o LCD?";
+const char* selectOutput = "PC o LCD?";
 volatile int waitingForOutput = 1;
 
 void printString(char* s){
@@ -57,7 +51,7 @@ void printString(char* s){
 }
 
 void printOut(char* message){
-	if(type==PC){
+	if(output==PC){
 		printString(message);
 		printString("\n");
 	}
@@ -81,22 +75,14 @@ void readString(char* dest, int size){
 }
 
 ISR(INT0_vect){ /* external interrupt service routine */
-	if(waitingForPlant && DigIO_getValue(buttonLeft) == HIGH){
-		type = MAGRA;
-		waitingForPlant = 0;
-	}
-	else if(waitingForOutput && DigIO_getValue(buttonLeft) == HIGH){
+	if(waitingForOutput && DigIO_getValue(buttonLeft) == HIGH){
 		output = PC;
 		waitingForOutput = 0;
 	}
 }
 
 ISR(INT1_vect){ /* external interrupt service routine */
-	if(waitingForPlant && DigIO_getValue(buttonRight) == HIGH){
-		type = GRASSA;
-		waitingForPlant = 0;
-	}
-	else if(waitingForOutput && DigIO_getValue(buttonRight) == HIGH){
+	if(waitingForOutput && DigIO_getValue(buttonRight) == HIGH){
 		output = LCD;
 		waitingForOutput = 0;
 	}
@@ -122,23 +108,23 @@ void error_blink_sound(void){
 }
 
 void controlLight(void){
-	uint8_t photocell_value= adc_read(light_pin); 
-	char msg[32];
+	uint16_t photocell_value= adc_read(light_pin); 
+	char msg[BUFFER_SIZE];
 	
 	if(photocell_value<minLight){
 		error_blink_sound();
-		printOut("WARNING: too low light!");
+		printOut("LOW light");
 		sprintf(msg, "Light: %d", photocell_value);
-		if(type==LCD){
+		if(output==LCD){
 			LCDGotoXY(0,1);
 		}
 		printOut(msg);
 	}
 	else if(photocell_value>maxLight){
 		error_blink_sound();
-		printOut("WARNING: too high light!");
+		printOut("HIGH light");
 		sprintf(msg, "Light: %d", photocell_value);
-		if(type==LCD){
+		if(output==LCD){
 			LCDGotoXY(0,1);
 		}
 		printOut(msg);
@@ -153,28 +139,28 @@ void controlTemp(void){
 	C3 = get_EEPROM_c3();
 	minTemp= get_EEPROM_minTemp();
 	maxTemp= get_EEPROM_maxTemp();
-	int Vo = adc_read(temp_pin);
-	//resistenza attuale del termistore 
+	uint16_t Vo = adc_read(temp_pin);
+	//current thermistor resistance 
 	R2 = R1 * (1023.0 / (float)Vo - 1.0);
 	logR2 = log(R2);
 	T = (1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2));
 	Tc = T - 273.15;
 		
-	char msg[16];	
+	char msg[BUFFER_SIZE];
 	
 	if(Tc<minTemp){
 		error_blink_sound();
-		printOut("Ambiente freddo");
+		printOut("LOW temp");
 		sprintf(msg, "Temp: %.1f C", Tc);
-		if(type==LCD){
+		if(output==LCD){
 			LCDGotoXY(0,1);
 		}	
 		printOut(msg);		
 	}else if(Tc>maxTemp){
 		error_blink_sound();
-		printOut("Ambiente caldo");
+		printOut("HIGH temp");
 		sprintf(msg, "Temp: %.1f C", Tc);
-		if(type==LCD){
+		if(output==LCD){
 			LCDGotoXY(0,1);
 		}
 		printOut(msg);
@@ -183,14 +169,14 @@ void controlTemp(void){
 
 void controlPoll(void){
 	uint16_t air_value= adc_read(poll_pin); 
-	char msg[16];
+	char msg[BUFFER_SIZE];
 		
 	if(air_value>maxPoll){
 		error_blink_sound();
-		sprintf(msg, "sensorValue = %d", air_value);
-		printOut(msg);	
 		sprintf(msg, "Polluted air %d", air_value);
-		if(type==LCD){
+		printOut(msg);
+		sprintf(msg, "Air: = %d", air_value);
+		if(output==LCD){
 			LCDGotoXY(0,1);
 		}
 		printOut(msg);
@@ -219,16 +205,12 @@ int main(void){
 	LCDinit();
 	LCDclr();
 	LCDcursorOFF();
-	LCDstring((uint8_t*)selectPlant, strlen(selectPlant));
-	while(waitingForPlant);
-	
-	LCDclr();
 	LCDstring((uint8_t*)selectOutput, strlen(selectOutput));
 	while(waitingForOutput);
 	
 	LCDclr();
 	
-	if(type == PC){
+	if(output == PC){
 		char rx_message[BUFFER_SIZE];
 		
 		printOut("frequency?");
@@ -276,12 +258,12 @@ int main(void){
 	while(1){
 		//LCDclr();
 		//controlLight();
-		//delayMs(1000);
-		LCDclr();
-		controlTemp();
-		delayMs(1000);
+		//delayMs(300);
 		//LCDclr();
-		//controlPoll();
-		//delayMs(1000);
+		//controlTemp();
+		//delayMs(300);
+		LCDclr();
+		controlPoll();
+		delayMs(1000);
 	}
 }
