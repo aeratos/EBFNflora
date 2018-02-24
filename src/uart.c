@@ -116,6 +116,15 @@ uint8_t UART_getChar(struct UART* uart){
   return c;
 }
 
+
+ISR(USART_RX_vect) {
+  uint8_t c=UDR0;
+  if (uart_0.rx_size<UART_BUFFER_SIZE){
+    uart_0.rx_buffer[uart_0.rx_end] = c;
+    BUFFER_PUT(uart_0.rx, UART_BUFFER_SIZE);
+  }
+}
+
 ISR(USART_UDRE_vect){
   if (! uart_0.tx_size){
     UCSR0B &= ~_BV(UDRIE0);
