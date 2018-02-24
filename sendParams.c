@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #define STR_LENGTH 16
+#define BUF_SIZE 300
 
 speed_t baud = B115200; /* baud rate */
 
@@ -36,7 +37,7 @@ int main(){
 
 	printf("Waiting for messages...\n");
 
-	while(1){
+	for(int i=0; i<7; i++){
 		/* Reading */
 		while(1){
 			ssize_t n = read(fd, &byte, 1);
@@ -64,6 +65,20 @@ int main(){
 		}
 		write(fd, "\0", 1);
 	
+	}
+	
+	char buf[BUF_SIZE];
+	int bytes_read = 0;
+	while (1) {
+		int n = read(fd, buf+bytes_read, 1);
+		if (n <= 0) {
+			perror("error");
+			exit(-1);
+		}
+		if (buf[bytes_read] == '\0') {
+			printf("\n");
+		}
+		printf("%c", buf[bytes_read += (bytes_read%BUF_SIZE)]); /* circular buffer */
 	}
 
 	return 0;
