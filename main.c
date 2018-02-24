@@ -8,6 +8,7 @@
 #include <avr/interrupt.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #define HIGH 1
 #define LOW 0
@@ -128,12 +129,70 @@ void controlLight(void){
 		error_blink_sound();
 		printOut("WARNING: too low light!");
 		sprintf(msg, "Light: %d", photocell_value);
+		if(type==LCD){
+			LCDGotoXY(0,1);
+		}
 		printOut(msg);
 	}
 	else if(photocell_value>maxLight){
 		error_blink_sound();
 		printOut("WARNING: too high light!");
 		sprintf(msg, "Light: %d", photocell_value);
+		if(type==LCD){
+			LCDGotoXY(0,1);
+		}
+		printOut(msg);
+	}
+}
+
+void controlTemp(void){	
+	R1 = get_EEPROM_r1();
+	float logR2, R2, T, Tc;
+	C1 = get_EEPROM_c1(); 
+	C2 = get_EEPROM_c2();
+	C3 = get_EEPROM_c3();
+	minTemp= get_EEPROM_minTemp();
+	maxTemp= get_EEPROM_maxTemp();
+	int Vo = adc_read(temp_pin);
+	//resistenza attuale del termistore 
+	R2 = R1 * (1023.0 / (float)Vo - 1.0);
+	logR2 = log(R2);
+	T = (1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2));
+	Tc = T - 273.15;
+		
+	char msg[16];	
+	
+	if(Tc<minTemp){
+		error_blink_sound();
+		printOut("Ambiente freddo");
+		sprintf(msg, "Temp: %.1f C", Tc);
+		if(type==LCD){
+			LCDGotoXY(0,1);
+		}	
+		printOut(msg);		
+	}else if(Tc>maxTemp){
+		error_blink_sound();
+		printOut("Ambiente caldo");
+		sprintf(msg, "Temp: %.1f C", Tc);
+		if(type==LCD){
+			LCDGotoXY(0,1);
+		}
+		printOut(msg);
+	}
+}
+
+void controlPoll(void){
+	uint16_t air_value= adc_read(poll_pin); 
+	char msg[16];
+		
+	if(air_value>maxPoll){
+		error_blink_sound();
+		sprintf(msg, "sensorValue = %d", air_value);
+		printOut(msg);	
+		sprintf(msg, "Polluted air %d", air_value);
+		if(type==LCD){
+			LCDGotoXY(0,1);
+		}
 		printOut(msg);
 	}
 }
@@ -169,43 +228,45 @@ int main(void){
 	
 	LCDclr();
 	
-	char rx_message[BUFFER_SIZE];
+	if(type == PC){
+		char rx_message[BUFFER_SIZE];
 		
-	printOut("frequency?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_prescaler(rx_message);
+		printOut("frequency?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_prescaler(rx_message);
+		
+		printOut("min light?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_minLight(rx_message);
+		
+		printOut("max light?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_maxLight(rx_message);
+		
+		printOut("min temperature?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_minTemp(rx_message);
+	
+		printOut("max temperature?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_maxTemp(rx_message);
+	
+		printOut("max pollution?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_maxPoll(rx_message);
+	
+		printOut("thermistor resistance?");
+		readString(rx_message, BUFFER_SIZE);
+		set_EEPROM_r1(rx_message);
+	}
+	
 	prescaler = get_EEPROM_prescaler();
-		
-	printOut("min light?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_minLight(rx_message);
 	minLight = get_EEPROM_minLight();
-		
-	printOut("max light?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_maxLight(rx_message);
 	maxLight = get_EEPROM_maxLight();
-		
-	printOut("min temperature?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_minTemp(rx_message);
 	minTemp = get_EEPROM_minTemp();
-	
-	printOut("max temperature?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_maxTemp(rx_message);
 	maxTemp = get_EEPROM_maxTemp();
-	
-	printOut("max pollution?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_maxPoll(rx_message);
 	maxPoll = get_EEPROM_maxPoll();
-	
-	printOut("thermistor resistance?");
-	readString(rx_message, BUFFER_SIZE);
-	set_EEPROM_r1(rx_message);
 	R1 = get_EEPROM_r1();
-	
 	C1 = get_EEPROM_c1();
 	C2 = get_EEPROM_c2();
 	C3 = get_EEPROM_c3();
@@ -213,7 +274,14 @@ int main(void){
 	adc_init_with_prescaler(prescaler);
 	
 	while(1){
-		controlLight();
-		delayMs(300);
+		//LCDclr();
+		//controlLight();
+		//delayMs(1000);
+		LCDclr();
+		controlTemp();
+		delayMs(1000);
+		//LCDclr();
+		//controlPoll();
+		//delayMs(1000);
 	}
 }
