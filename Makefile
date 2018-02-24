@@ -35,7 +35,10 @@ OBJS=adc.o\
 
 BINS=eeprom_test.elf\
      initial_setup.elf\
-     light_test.elf\
+     light.elf\
+     thermistor.elf\
+     pollution.elf\
+     printOut.elf\
 
 .phony:	clean all
 
