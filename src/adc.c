@@ -31,8 +31,8 @@ void adc_enableInterrupt(void) {
 
 uint16_t adc_read(uint8_t ch) {
 	// analog input channels in ATmega328: ADC0 ADC1 ADC2 ADC3 ADC4 ADC5
-	if (ch > 5) ch = 0;
-	ADMUX |= ch;
+	ch &= 0b00000111;
+	ADMUX = (ADMUX & 0xF8)|ch;
 	
 	// starting single conversion
 	ADCSRA |= (1<<ADSC);
