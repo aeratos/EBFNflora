@@ -16,12 +16,12 @@
 #define PC 0
 #define LCD 1
 
-#define BUFFER_SIZE 32
+#define BUFFER_SIZE 16
 
 struct UART* uart;
 
 int led = 8;
-int buz= 13;
+int buz= 9;
 const int buttonLeft = 2;  //PD2 is the port related to INT0
 const int buttonRight = 3; //PD3 is the port related to INT1
 int temp_pin = 0;
@@ -41,7 +41,7 @@ float C1;
 float C2;
 float C3;
 
-const char* selectOutput = "PC o LCD?";
+const char* selectOutput = "PC or LCD?";
 volatile int waitingForOutput = 1;
 
 void printString(char* s){
@@ -66,22 +66,22 @@ void readString(char* dest, int size){
 		uint8_t c = UART_getChar(uart);
 		dest[i++] = c;
 		dest[i] = 0;
-		if(i == size-1){  // end of dest buffer
-			while(c != 0) c = UART_getChar(uart); // read all incoming chars without storing in dest buffer: they are lost
+		if(i == size-1){  //end of dest buffer
+			while(c != 0) c = UART_getChar(uart); //read all incoming chars without storing in dest buffer: they are lost
 			return;
 		}
 		else if(c=='\n' || c==0) return;
 	}
 }
 
-ISR(INT0_vect){ /* external interrupt service routine */
+ISR(INT0_vect){ //external interrupt service routine
 	if(waitingForOutput && DigIO_getValue(buttonLeft) == HIGH){
 		output = PC;
 		waitingForOutput = 0;
 	}
 }
 
-ISR(INT1_vect){ /* external interrupt service routine */
+ISR(INT1_vect){ //external interrupt service routine
 	if(waitingForOutput && DigIO_getValue(buttonRight) == HIGH){
 		output = LCD;
 		waitingForOutput = 0;
@@ -145,7 +145,7 @@ void controlTemp(void){
 	logR2 = log(R2);
 	T = (1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2));
 	Tc = T - 273.15;
-		
+	
 	char msg[BUFFER_SIZE];
 	
 	if(Tc<minTemp){
@@ -192,21 +192,25 @@ int main(void){
 	DigIO_setValue(led, LOW);
 	DigIO_setValue(buz, LOW);
 	
-	DigIO_setDirection(buttonLeft, Input); // PD2 as an input
+	DigIO_setDirection(buttonLeft, Input); //PD2 as an input
 	DigIO_setValue(buttonLeft, HIGH);
-	DigIO_setDirection(buttonRight, Input); // PD3 as an input
+	DigIO_setDirection(buttonRight, Input); //PD3 as an input
 	DigIO_setValue(buttonRight, HIGH);
-	
-	EIMSK = (1<<INT1)|(1<<INT0); // Turn ON INT0 and INT1
-	EICRA = (1<<ISC11)|(1<<ISC10)|(1<<ISC01)|(1<<ISC00);
-	
-	sei(); // enable interrupts globally
 	
 	LCDinit();
 	LCDclr();
 	LCDcursorOFF();
-	LCDstring((uint8_t*)selectOutput, strlen(selectOutput));
-	while(waitingForOutput);
+	
+	EIMSK = (1<<INT1)|(1<<INT0); //Turn ON INT0 and INT1
+	EICRA = (1<<ISC11)|(1<<ISC10)|(1<<ISC01)|(1<<ISC00);
+	sei(); //enable interrupts globally
+	
+	//waiting for output setup
+	while(waitingForOutput){
+		LCDclr();
+		LCDstring((uint8_t*)selectOutput, strlen(selectOutput));
+		delayMs(300);
+	}
 	
 	LCDclr();
 	
@@ -256,14 +260,14 @@ int main(void){
 	adc_init_with_prescaler(prescaler);
 	
 	while(1){
-		//LCDclr();
-		//controlLight();
-		//delayMs(300);
-		//LCDclr();
-		//controlTemp();
-		//delayMs(300);
+		LCDclr();
+		controlLight();
+		delayMs(500);
+		LCDclr();
+		controlTemp();
+		delayMs(500);
 		LCDclr();
 		controlPoll();
-		delayMs(1000);
+		delayMs(500);
 	}
 }
