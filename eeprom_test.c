@@ -19,8 +19,8 @@ int main(void){
 	while(1){
 		char msg[16];
 		
-		int fClock = get_EEPROM_prescaler();
-		sprintf(msg, "%d\n", fClock);
+		int timer = get_EEPROM_timer();
+		sprintf(msg, "%d\n", timer);
 		printString(msg);
 		delayMs(300);
 		
