@@ -20,6 +20,7 @@ HEADERS=adc.h\
 	eepromParams.h\
 	lcd_lib.h\
 	pins.h\
+	timer.h\
 	uart.h\
 
 INCLUDES=$(addprefix $(PREFIX)/include/, $(HEADERS))
@@ -31,6 +32,7 @@ OBJS=adc.o\
      eepromParams.o\
      lcd_lib.o\
      pins.o\
+     timer.o\
      uart.o\
 
 BINS=eeprom_test.elf\
