@@ -8,20 +8,11 @@
 struct UART* uart;
 
 /* GET functions */
-uint8_t get_EEPROM_prescaler(void){
+uint16_t get_EEPROM_timer(void){
 	char eeprom_buffer[BLOCK_SIZE];
 	memset(eeprom_buffer, 0, BLOCK_SIZE);
 	EEPROM_read(eeprom_buffer, 0, BLOCK_SIZE);
-	
-	if (strcmp(eeprom_buffer, "16M") == 0) return 0;
-	else if (strcmp(eeprom_buffer, "8M") == 0) return 2;
-	else if (strcmp(eeprom_buffer, "4M") == 0) return 4;
-	else if (strcmp(eeprom_buffer, "2M") == 0) return 8;
-	else if (strcmp(eeprom_buffer, "1M") == 0) return 16;
-	else if (strcmp(eeprom_buffer, "500K") == 0) return 32;
-	else if (strcmp(eeprom_buffer, "250K") == 0) return 64;
-	else if (strcmp(eeprom_buffer, "125K") == 0) return 128;
-	else return 128; // default prescaler 
+	return atoi(eeprom_buffer);
 }
 
 uint16_t get_EEPROM_minLight(void){
@@ -88,8 +79,8 @@ float get_EEPROM_c3(void){
 }
 
 /* SET functions */
-void set_EEPROM_prescaler(char* str){
-	// we write frequency on eeprom at address 0
+void set_EEPROM_timer(char* str){
+	// we write timer on eeprom at address 0
 	int sizeFrequency = strlen(str)+1;
 	EEPROM_write(0, str, sizeFrequency);
 }

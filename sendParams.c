@@ -55,10 +55,10 @@ int main(){
 		if((strlen(s) > 0) && (s[strlen(s) - 1] == '\n'))
 			s[strlen(s) - 1] = '\0';
 			
-		int i;
+		int j;
 		int l = strlen(s);
-		for (i=0; i<l; i++) {
-			if(write(fd, s+i, 1) < 1){
+		for (j=0; j<l; j++) {
+			if(write(fd, s+j, 1) < 1){
 				perror("error");
 				exit(-1);
 			}

@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 /* GET functions */
-uint8_t get_EEPROM_prescaler(void);
+uint16_t get_EEPROM_timer(void);
 uint16_t get_EEPROM_minLight(void);
 uint16_t get_EEPROM_maxLight(void);
 uint16_t get_EEPROM_minTemp(void);
@@ -14,7 +14,7 @@ float get_EEPROM_c2(void);
 float get_EEPROM_c3(void);
 
 /* SET functions */
-void set_EEPROM_prescaler(char* str);
+void set_EEPROM_timer(char* str);
 void set_EEPROM_minLight(char* str);
 void set_EEPROM_maxLight(char* str);
 void set_EEPROM_minTemp(char* str);
