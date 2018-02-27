@@ -198,17 +198,43 @@ int main(void){
 	
 	adc_init();
 	
+	//getting last set params in EEPROM for sensing temperature in setup loop
+	minTemp = get_EEPROM_minTemp();
+	maxTemp = get_EEPROM_maxTemp();
+	R1 = get_EEPROM_r1();
+	C1 = get_EEPROM_c1();
+	C2 = get_EEPROM_c2();
+	C3 = get_EEPROM_c3();
+	
 	EIMSK = (1<<INT1)|(1<<INT0); //Turn ON INT0 and INT1
 	EICRA = (1<<ISC11)|(1<<ISC10)|(1<<ISC01)|(1<<ISC00);
+	
+	printOnLCD("Hello");
+	LCDGotoXY(0,1);
+	printOnLCD("EBFNflora");
+	delayMs(1500);
+	
 	sei(); //enable interrupts globally
 	
 	//waiting for output setup
 	while(waitingForOutput){
 		LCDclr();
 		printOnLCD("Setup sensors?");
+		
+		float logR2, R2, T, Tc;
+		uint16_t Vo = adc_read(temp_pin);
+		//current thermistor resistance 
+		R2 = R1 * (1023.0 / (float)Vo - 1.0);
+		logR2 = log(R2);
+		T = (1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2));
+		Tc = T - 273.15;
+	
+		char msg[BUFFER_SIZE];
+		sprintf(msg, "Temp: %.1f C", Tc);
 		LCDGotoXY(0,1);
-		printOnLCD("[Y/n]?");
-		delayMs(300);
+		printOnLCD(msg);
+		
+		delayMs(500);
 	}
 	
 	LCDclr();
