@@ -17,55 +17,55 @@ int main(void){
 	uart = UART_init("uart_0", 115200);
 	
 	while(1){
-		char msg[16];
+		char msg[32];
 		
 		int timer = get_EEPROM_timer();
-		sprintf(msg, "%d\n", timer);
+		sprintf(msg, "timer = %d\n", timer);
 		printString(msg);
 		delayMs(300);
 		
 		int minLightValue = get_EEPROM_minLight();
-		sprintf(msg, "%d\n", minLightValue);
+		sprintf(msg, "minLight = %d\n", minLightValue);
 		printString(msg);
 		delayMs(300);
 		
 		int maxLightValue = get_EEPROM_maxLight();
-		sprintf(msg, "%d\n", maxLightValue);
+		sprintf(msg, "maxLight = %d\n", maxLightValue);
 		printString(msg);
 		delayMs(300);
 		
 		int minTempValue = get_EEPROM_minTemp();
-		sprintf(msg, "%d\n", minTempValue);
+		sprintf(msg, "minTemp = %d\n", minTempValue);
 		printString(msg);
 		delayMs(300);
 		
 		int maxTempValue = get_EEPROM_maxTemp();
-		sprintf(msg, "%d\n", maxTempValue);
+		sprintf(msg, "maxTemp = %d\n", maxTempValue);
 		printString(msg);
 		delayMs(300);
 		
-		int maxPollValue = get_EEPROM_maxPoll();
-		sprintf(msg, "%d\n", maxPollValue);
-		printString(msg);
-		delayMs(300);
-		
-		int r1Value = get_EEPROM_r1();
-		sprintf(msg, "%d\n", r1Value);
+		float r1Value = get_EEPROM_r1();
+		sprintf(msg, "R1 = %.1f\n", r1Value);
 		printString(msg);
 		delayMs(300);
 		
 		float c1Value = get_EEPROM_c1();
-		sprintf(msg, "%f\n", c1Value);
+		sprintf(msg, "C1 = %12.7e\n", c1Value);
 		printString(msg);
 		delayMs(300);
 		
 		float c2Value = get_EEPROM_c2();
-		sprintf(msg, "%f\n", c2Value);
+		sprintf(msg, "C2 = %12.7e\n", c2Value);
 		printString(msg);
 		delayMs(300);
 		
 		float c3Value = get_EEPROM_c3();
-		sprintf(msg, "%f\n", c3Value);
+		sprintf(msg, "C3 = %12.7e\n", c3Value);
+		printString(msg);
+		delayMs(300);		
+		
+		int maxPollValue = get_EEPROM_maxPoll();
+		sprintf(msg, "maxPoll = %d\n", maxPollValue);
 		printString(msg);
 		delayMs(300);
 	}

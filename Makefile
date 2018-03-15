@@ -19,6 +19,9 @@ HEADERS=adc.h\
 	eeprom.h\
 	eepromParams.h\
 	lcd_lib.h\
+	packet_header.h\
+	packet_operations.h\
+	packet_handler.h\
 	pins.h\
 	timer.h\
 	uart.h\
@@ -31,12 +34,13 @@ OBJS=adc.o\
      eeprom.o\
      eepromParams.o\
      lcd_lib.o\
+     packet_handler.o\
      pins.o\
      timer.o\
      uart.o\
 
 BINS=eeprom_test.elf\
-     main.elf\
+	 main.elf\
 
 .phony:	clean all
 
