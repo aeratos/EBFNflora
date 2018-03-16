@@ -439,11 +439,11 @@ int main(void){
 	maxLight = get_EEPROM_maxLight();
 	minTemp = get_EEPROM_minTemp();
 	maxTemp = get_EEPROM_maxTemp();
-	maxPoll = get_EEPROM_maxPoll();
 	R1 = get_EEPROM_r1();
 	C1 = get_EEPROM_c1();
 	C2 = get_EEPROM_c2();
 	C3 = get_EEPROM_c3();
+	maxPoll = get_EEPROM_maxPoll();
 
 	//disable interrupts globally to turn OFF INT0 and INT1
 	cli();

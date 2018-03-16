@@ -4,10 +4,10 @@
 
 ![GitHub Logo](circuit.jpg)
 
-All'avvio vengono inizializzati i registri per la comunicazione seriale (UART), l'uso dei timer (TIMER1), i pin digitali, l'LCD (usata [libreria esterna](http://winavr.scienceprog.com/example-avr-projects/avr-gcc-4-bit-and-8-bit-lcd-library.html)), l'interfaccia ADC (definita appositamente in [adc.c](src/adc.c)) e gli external interrupt (INT0, INT1).
+All'avvio vengono inizializzati i registri per la comunicazione seriale (UART), i pin digitali, l'LCD (usata [libreria esterna](http://winavr.scienceprog.com/example-avr-projects/avr-gcc-4-bit-and-8-bit-lcd-library.html)), l'interfaccia ADC (definita appositamente in [adc.c](src/adc.c)) e gli external interrupt (INT0, INT1).
 
 ```c
-EIMSK = (1<<INT1)|(1<<INT0); //Turn ON INT0 and INT1
+EIMSK = (1<<INT1)|(1<<INT0); //turn ON INT0 and INT1
 EICRA = (1<<ISC11)|(1<<ISC10)|(1<<ISC01)|(1<<ISC00);
 ```
 
@@ -43,6 +43,9 @@ ISR(INT0_vect){ //external interrupt service routine
 		reset = 1;
 		waitingForOutput = 0;
 	}
+	else if(!waitingForOutput && !EEPROM_params_ready && DigIO_getValue(buttonLeft) == HIGH){
+		EEPROM_params_ready = 1;
+	}
 }
 
 ISR(INT1_vect){ //external interrupt service routine
@@ -50,25 +53,32 @@ ISR(INT1_vect){ //external interrupt service routine
 		reset = 0;
 		waitingForOutput = 0;
 	}
+	else if(!waitingForOutput && !EEPROM_params_ready && DigIO_getValue(buttonRight) == HIGH){
+		EEPROM_params_ready = 1;
+	}
 }
 ```
 
-Nel primo caso (`reset = 1`) l'MCU interagisce con l'utente tramite seriale per ottenere i nuovi parametri di configurazione e salvarli in EEPROM, ognuno in blocchi da 16 byte come di seguito riportato. Sono state scritte funzioni apposite per lettura/scrittura da/su EEPROM definite in [eepromParams.c](src/eepromParams.c)
+Nel primo caso (`reset = 1`) l'MCU installa gli handler per i pacchetti binari e attende dall'utente l'arrivo dei ConfigPacket contenenti i nuovi parametri di configurazione (continua a flushare l'input buffer), salva i singoli valori in EEPROM, ognuno in blocchi da 16 byte come di seguito riportato. Sono state scritte funzioni apposite per lettura/scrittura da/su EEPROM definite in [eepromParams.c](src/eepromParams.c)
 
-![GitHub Logo](EBFNflora_buffer.PNG)
+**N.B**: dopo aver premuto il pushbutton associato a INT0 [sendParams.c](host/sendParams.c) è il programma da eseguire su host per scegliere e inviare i nuovi settaggi. Si veda più avanti il paragrafo sulla comunicazione seriale.
+
+![GitHub Logo](EBFNflora_buffer.jpeg)
 
 * `uint16_t timer`: intervallo in ms tra due successivi controlli dei sensori
 * `uint16_t minLight`
 * `uint16_t maxLight`
 * `uint16_t minTemp`
 * `uint16_t maxTemp`
-* `uint16_t maxPoll`: massimo valore della qualità dell'aria tollerato, consigliabile 150-170
-* `float R1`: resistenza per il calcolo della temperatura, nel circuito 10000
+* `float R1`: resistenza in Ω impiegata per il calcolo della temperatura, nel circuito 10000
 * `float C1, C2, C3`: costanti, vedere [Termistore](#Termistore)
+* `uint16_t maxPoll`: massimo valore della qualità dell'aria tollerato, consigliabile 150-170
 
-**N.B**: il programma [eeprom_test.c](eeprom_test.c) è stato scritto per leggere i valori correnti in EEPROM.
+**N.B**: [eeprom_test.c](eeprom_test.c) è un programma di debugging scritto per leggere i valori correnti in EEPROM.
 
-Nel secondo caso (`reset = 0`) i valori già presenti in EEPROM - quelli dell'ultimo setup - sono salvati subito nelle variabili globali.
+Una volta che i parametri sono stati modificati, l'utente può premere un qualunque pushbutton per uscire dal loop (il flag `EEPROM_params_ready` è settato a 1) e disinstallare gli handler dei pacchetti.
+
+Nel secondo caso (`reset = 0`) l'MCU va subito a salvare i valori già presenti in EEPROM nelle variabili globali, cioé quelli dell'ultimo setup.
 
 ```c
 timer = get_EEPROM_timer();
@@ -76,17 +86,31 @@ minLight = get_EEPROM_minLight();
 maxLight = get_EEPROM_maxLight();
 minTemp = get_EEPROM_minTemp();
 maxTemp = get_EEPROM_maxTemp();
-maxPoll = get_EEPROM_maxPoll();
 R1 = get_EEPROM_r1();
 C1 = get_EEPROM_c1();
 C2 = get_EEPROM_c2();
 C3 = get_EEPROM_c3();
+maxPoll = get_EEPROM_maxPoll();
+```
+
+A questo punto: 
+
+* vengono disattivati i bit dei registri per gli external interrupt perché non saranno più utilizzati
+* viene inizializzato il timer basato sul TIMER1
+
+```c
+//disable interrupts globally to turn OFF INT0 and INT1
+cli();
+EIMSK = 0x00;
+EICRA = 0x00;
+Timers_init(); //initialize timer
+sei(); //enable interrupts globally
 
 struct Timer* timerSensors = Timer_create("timer_0", timer, timerFn, NULL); 
 Timer_start(timerSensors);
 ```
 
-Il valore in `timer` è usato per richiamare ogni "timer" ms la funzione `timerFn()` che si occupa di effettuare il sensing dell'ambiente.
+Il valore memorizzato in `timer` è usato per richiamare ogni "timer" ms la funzione `timerFn()` che si occupa di effettuare il sensing dell'ambiente.
 
 ```c
 void timerFn(void* args){
@@ -115,36 +139,72 @@ Il microcontrollore entra infine in un loop vuoto ed eseguirà la funzione `time
 
 ## Comunicazione seriale
 
-Il baudrate selezionato è 115200. Il formato dei frame adottato in [uart.c](src/uart.c) prevede 1 start bit, 8 bits data (`UCSR0C = _BV(UCSZ01) | _BV(UCSZ00)`), nessun bit di parità (nel registro UCSR0C i bit UPM01=0 e UPM00=0), 1 stop bit (nel registro UCSR0C il bit USBS0=0). Il programma [sendParams.c](sendParams.c) scritto per comunicare via terminale e configurare così i parametri in EEPROM utilizza la stessa configurazione per i pacchetti.
+### Lato Microcontrollore
+
+Nei paragrafi precedenti si è visto che si instaura una comunicazione seriale binaria a pacchetti solo per trasmettere i parametri di misurazione. Esistono 4 tipi di ConfigPacket:
 
 ```c
-speed_t baud = B115200; /* baud rate */
+typedef struct TimerConfigPacket{
+	PacketHeader header;
+	uint32_t duration;
+} TimerConfigPacket;
 
-struct termios settings;
-tcgetattr(fd, &settings);
+typedef struct LightConfigPacket{
+	PacketHeader header;
+	uint16_t minLight;
+	uint16_t maxLight;
+} LightConfigPacket;
 
-cfsetospeed(&settings, baud); /* baud rate */
-settings.c_cflag &= ~PARENB; /* no parity */
-settings.c_cflag &= ~CSTOPB; /* 1 stop bit */
-settings.c_cflag &= ~CSIZE;
-settings.c_cflag |= CS8 | CLOCAL; /* 8 bits */
-settings.c_lflag = ICANON; /* canonical mode */
-settings.c_oflag &= ~OPOST; /* raw output */
+typedef struct TemperatureConfigPacket{
+	PacketHeader header;
+	uint16_t minTemp;
+	uint16_t maxTemp;
+	float r1;
+	float c1;
+	float c2;
+	float c3;
+} TemperatureConfigPacket;
 
-tcsetattr(fd, TCSANOW, &settings); /* apply the settings */
-tcflush(fd, TCOFLUSH);
+typedef struct PollutionConfigPacket{
+	PacketHeader header;
+	uint16_t maxPoll;
+} PollutionConfigPacket;
 ```
-Il programma riconosce la fine di un messaggio grazie a un carattere speciale (`'\0' oppure '\n'`), legge da `stdin` la stringa digitata dall'utente e la invia al microcontrollore dopo aver aggiunto il terminatore `\0`. Il ciclo è ripetuto 7 volte, cioé per ogni parametro configurabile in EEPROM.
 
-Dall'altro lato l'MCU salva la stringa ricevuta nella EEPROM, e.g. la variabile timer:
+Ognuno dei precedenti è dotato di una funzione "onReceive" che estrae il payload, carica in EEPROM i nuovi parametri e li mostra sull'LCD come feedback per l'utente. A titolo di esempio ecco la funzione per il PollutionConfigPacket:
 
 ```c
-printString("timer in ms?\n");
-readString(rx_message, BUFFER_SIZE);
-set_EEPROM_timer(rx_message);
+PacketStatus PollutionConfigPacket_onReceive(PacketHeader* header, void* args __attribute__((unused))){
+	PollutionConfigPacket* p = (PollutionConfigPacket*) header;
+	int maxPoll = p->maxPoll;
+	set_EEPROM_maxPoll(maxPoll);
+	char buffer[8];
+	sprintf(buffer, "%d", maxPoll);
+	LCDclr();
+	printOnLCD(buffer);
+	return Success;
+}
 ```
 
-**N.B**: `void readString(char* dest, int size)` è una funzione definita in [main.c](main.c) per salvare in un buffer i caratteri ricevuti.
+### Lato Host
+
+Il programma [sendParams.c](host/sendParams.c) avvia di fatto una procedura guidata per l'inserimento dei parametri. Chiede un parametro alla volta, lo legge da stdin, lo converte da char* al tipo corretto, prepara il singolo pacchetto e lo invia. Di seguito un esempio con il LightConfigPacket.
+
+```c
+printf("Insert min light: ");
+read_from_stdin();
+uint16_t minLight = atoi(inputString);
+
+printf("Insert max light: ");
+read_from_stdin();
+uint16_t maxLight = atoi(inputString);
+
+LightConfigPacket p1 = { {LIGHT_CONFIG_PACKET_TYPE, LIGHT_CONFIG_PACKET_SIZE, 0}, minLight, maxLight };
+PacketHandler_sendPacket(&packet_handler, (PacketHeader*) &p1);
+flushOutputBuffer(fd);
+```
+
+L'host non ha funzioni di ricezione "onReceive" per i pacchetti perché si occupa solo di inviare valori. Naturalmente - per come è stato progettato il [main.c](main.c) - saranno ignorati i pacchetti inviati senza aver premuto il pushbutton associato a INT0 oppure dopo che gli external interrupt sono stati disabilitati.
 
 ## Sensori
 
@@ -188,7 +248,7 @@ void controlPoll(void){
 	char msg[BUFFER_SIZE];
 		
 	if(air_value>maxPoll){
-		sprintf(msg, "Polluted air %d", air_value);
+		sprintf(msg, "Polluted air");
 		printOnLCD(msg);
 		sprintf(msg, "Air: %d", air_value);
 		LCDGotoXY(0,1);
@@ -243,4 +303,3 @@ La variabile Tc indica la temperatura attuale.
 * `Tc = T - 273.15` lo converte in °C.
 
 Se la temperatura attuale non è nell'intervallo `[minTemp,maxTemp]` viene invocata la funzione `error_blink()` e viene stampato un messaggio di errore.
-
